@@ -78,7 +78,7 @@ ON=@Completion
 To avoid many bespoke fields, standardize:
 
 - `TARGETDEF` (single identifier for SINGLE).
-- `TARGETLIST` (csv/list identifier for MULTI).
+- `SUBSECTION` (for `OBJECT=MULTI`): direct subsection name to match, especially from `[CHARDEF x]`.
 - `TARGET_EXPR` (advanced filter expression; optional future).
 
 For KILL examples:
@@ -101,11 +101,8 @@ TYPE=KILL
 OBJECT=MULTI
 CATEGORY=Hunting
 TARGET=1000
-TARGETLIST=undead_set_1
+SUBSECTION=undead_tier1
 POINTS=20
-
-[DEFNAME undead_set_1]
-c_zombie,c_skeleton,c_lich
 ```
 
 ---
@@ -170,6 +167,17 @@ Expose script functions:
 - `SRC.ACH_LIST_BY_CATEGORY <catKey>` → returns achievement IDs sorted.
 - `SRC.ACH_GET <id>.<field>` → unified read access.
 
+
+### Global read access from SERV
+
+Achievements should also be queryable globally from scripts with:
+
+- `SERV.ACHIEVEMENT.<ID>.PROP`
+
+Where `PROP` can be fields such as `NAME`, `DESC`, `TYPE`, `CATEGORY`, `TARGET`, `POINTS`, etc.
+
+This avoids duplicating metadata in `DEFNAME` blocks and gives a single canonical source in the achievement registry.
+
 ### Gump flow example
 1. Build left panel with categories.
 2. On click category, call `ACH_LIST_BY_CATEGORY`.
@@ -188,7 +196,9 @@ Core should own update logic for performance and consistency.
 1. Game event occurs (`OnKill`, `OnCraft`, etc.).
 2. Achievement manager gets `(player, event_type, context)`.
 3. Retrieve candidate achievements by `TYPE` (+ indexed filters).
-4. Match target(s) (single/list/filter).
+4. Match target(s):
+   - `OBJECT=SINGLE`: compare specific target (`TARGETDEF`).
+   - `OBJECT=MULTI`: compare killed mob subsection (eg `REF1.SUBSECTION`) with achievement `SUBSECTION`.
 5. Increment `actual` safely (clamped to `TARGET`).
 6. If threshold reached and not completed:
    - set completed fields,
@@ -201,7 +211,7 @@ Do **not** iterate all achievements globally on each kill. Maintain indices:
 
 - by `TYPE`
 - by `TARGETDEF`
-- by list membership cache
+- by `SUBSECTION` membership cache
 
 ---
 
@@ -333,12 +343,19 @@ TYPE=KILL
 OBJECT=MULTI
 CATEGORY=Hunting
 TARGET=1000
-TARGETLIST=dungeon_mobs_t1
+SUBSECTION=undead_tier1
 POINTS=25
 CLAIM_MODE=MANUAL
 
-[DEFNAME dungeon_mobs_t1]
-c_skeleton,c_zombie,c_lich,c_wraith
+// Example chardefs tagged with a common subsection
+[CHARDEF c_skeleton]
+SUBSECTION=undead_tier1
+
+[CHARDEF c_zombie]
+SUBSECTION=undead_tier1
+
+[CHARDEF c_lich]
+SUBSECTION=undead_tier1
 ```
 
 ### Example C — category metadata
@@ -381,9 +398,11 @@ Implement a native SCP-driven Achievement System in CORE with:
 2. Player script access must support:
    - `SRC.ACHIEVEMENT.<ID>.ACTUAL`
    - `SRC.ACHIEVEMENT.<ID>.COMPLETED`
-3. Category-based listing must be first-class for UI/gump filtering.
-4. Completion must be idempotent (no duplicate rewards).
-5. Parser warnings must be explicit (invalid TYPE, missing TARGET, etc.).
+3. Global metadata access must support `SERV.ACHIEVEMENT.<ID>.PROP`.
+4. For `OBJECT=MULTI`, matching should use mob `SUBSECTION` from `[CHARDEF x]` (eg `REF1.SUBSECTION`).
+5. Category-based listing must be first-class for UI/gump filtering.
+6. Completion must be idempotent (no duplicate rewards).
+7. Parser warnings must be explicit (invalid TYPE, missing TARGET, etc.).
 
 ## Data and API conventions
 - Use normalized category keys internally (case-insensitive), preserve display name.
