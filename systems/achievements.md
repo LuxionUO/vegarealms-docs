@@ -9,7 +9,8 @@ Example:
 [ACHIEVEMENT 1]
 NAME=Orcs Master
 TYPE=Kill
-OBJECT=Single                               // Single for "chardef", Multi for "subsection"
+OBJECTTYPE=Single                               // Single for "chardef", Multi for "subsection"
+OBJECT=c_orc
 CATEGORY=Hunting                            // Category where the achievement sits
 TARGET=500                                  // Creatures to kill
 POINTS=10                                   // Reward
